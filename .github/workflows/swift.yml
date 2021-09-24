@@ -1,19 +1,23 @@
-name: Swift
+name: CI
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push]
 
 jobs:
-  build:
+  build-test:
 
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: swift build -v
+    - name: Checkout
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+        
+    - name: Build app
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: xcodebuild -project 'riskmethodsCICD.xcodeproj' -scheme 'riskmethodsCICD' -destination 'generic/platform=iOS' -configuration Release build CODE_SIGNING_ALLOWED=NO | xcpretty
+    
     - name: Run tests
-      run: swift test -v
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: xcodebuild -project 'riskmethodsCICD.xcodeproj' -scheme 'riskmethodsCICD' -destination 'platform=iOS Simulator,name=iPhone 11 Pro' test | xcpretty
+
