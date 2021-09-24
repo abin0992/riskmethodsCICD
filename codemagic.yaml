@@ -1,42 +1,30 @@
 workflows:
-  my-workflow:
+  ios-project-debug: # workflow ID
+    name: iOS debug # workflow name
+    environment:
+      xcode: latest
+      cocoapods: default
+      vars:
+          XCODE_PROJECT: "riskmethodsCICD.xcodeproj"
+          XCODE_SCHEME: "riskmethodsCICD"
     scripts:
-      - name: Run iOS tests
+      - name: Run tests
         script: |
-          set -e # exit on first failed command
-
-          xcode-project run-tests \
-              --project "riskmethodsCICD.xcodeproj" \
-              --scheme "riskmethodsCICD" \
-              --device "iPhone 12"
+          xcodebuild \
+          -project "$XCODE_PROJECT" \
+          -scheme "$XCODE_SCHEME" \
+          -sdk iphonesimulator \
+          -destination 'platform=iOS Simulator,name=iPhone 12,OS=14.1' \
+          clean build test CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
         test_report: build/ios/test/*.xml
-      - name: Add provisioning profiles
+      - name: Build debug app
         script: |
-          set -e # exit on first failed command
-
-          PROFILES_HOME="$HOME/Library/MobileDevice/Provisioning Profiles"
-          mkdir -p "$PROFILES_HOME"
-          echo ${PROVISIONING_PROFILE?} | base64 --decode > "$PROFILES_HOME/$(uuidgen).mobileprovision"
-      - name: Add signing certificate
-        script: |
-          set -e # exit on first failed command
-
-          echo ${CERTIFICATE?} | base64 --decode > /tmp/certificate.p12
-          keychain initialize
-          keychain add-certificates \
-              --certificate /tmp/certificate.p12 \
-              --certificate-password ${CERTIFICATE_PASSWORD?}
-      - name: Increment build number
-        script: agvtool new-version -all $BUILD_NUMBER
-      - name: Set up code signing settings on Xcode project
-        script: xcode-project use-profiles
-      - name: Build ipa for distribution
-        script: xcode-project build-ipa \
-                    --workspace "${XCODE_WORKSPACE?}" \
-                    --scheme "${XCODE_SCHEME?}"
+          xcodebuild build -project "$XCODE_PROJECT" \
+          -scheme "$XCODE_SCHEME" \
+          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
     artifacts:
-      - build/ios/ipa/*.ipa
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
     publishing:
-       email:
+      email:
         recipients:
           - abin.baby@riskmethods.net
